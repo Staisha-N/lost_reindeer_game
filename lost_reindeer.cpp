@@ -4,15 +4,21 @@
 #include <time.h> 
 
 int main();
+bool game();
 void print_canada_start();
 void print_canada_with_player(char * board, std::size_t &xdim, std::size_t &ydim);
-std::size_t province_hiding_spot();
-std::size_t city_hiding_spot(); //not written yet
+int province_hiding_spot();
+int city_hiding_spot(); 
 char * createBoard();
 void startGame(char * & board);
 void cleanBoard(char * board);
+char getAction();
+char getAction_noInspect();
 void mark_province (char * board, int index, std::size_t &xdim, std::size_t &ydim); //maybe use & before board?
-void reposition (char * board, std::size_t &xdim, std::size_t &ydim);
+void reposition (char * board, std::size_t &xdim, std::size_t &ydim, char action, int province_num, int city_num);
+void actionInspect(char * board, std::size_t &xdim, std::size_t &ydim, int province_num, int city_num);
+std::string WhereAmI_province(char * board, std::size_t &xdim, std::size_t &ydim);
+void HelpHint(int province_num);
 
 class Colors {
   public:
@@ -26,6 +32,11 @@ class Colors {
     const std::string cyan = "\033[36m";
     const std::string white = "\033[37m";
 };
+
+
+int hint_countdown {3};
+int carrots {0};
+
 
 class canada_graphic {
   public:
@@ -54,29 +65,40 @@ class canada_graphic {
 };
 
 int main() {
+    srand(time(NULL));
+    game();
+    return 0;
+} 
+
+bool game() {
     Colors colors;
     canada_graphic can;
     
-    std::string accept_mission {};
-    bool key {false};
     char * gameBoard {NULL};
     std::size_t xdim {};
     std::size_t ydim {};
-    int province_index {};  
-    
+    int province_index = province_hiding_spot(); // random province (1-13) 
+    int city_index = city_hiding_spot (); // random city (1-3)
+
+    std::cout << province_index << std::endl;
+    std::cout << city_index << std::endl;
+
     startGame(gameBoard);
 
     std::cout << "Oh no! One of Santa's reindeer has escaped." << std::endl
-            << "He is hiding somewhere in Canada. Your mission is to find him." << std::endl
-            << "Do you accept this mission? Yes [Y] or No [N]" << std::endl;
+    << "He is hiding somewhere in Canada. Your mission is to find him." << std::endl
+    << "Do you accept this mission? Yes [Y] or No [N]" << std::endl;
 
+
+    std::string accept_mission {};
+    bool key {false};
     while (key == false) {
         std::cin >> accept_mission;
 
         if ((accept_mission == "Y") || (accept_mission == "y")) {
             key = true;
         } else if ((accept_mission == "N") || (accept_mission == "n")) {
-            return 0;
+            return false;
         } else {
             std::cout << "Please enter a valid response (Y or N)" << std::endl;
         } 
@@ -95,9 +117,7 @@ int main() {
     std::cout << std::endl;
 
     std::cout << "Choose the coordinates of the location where you would like to begin your search." << std::endl;
-    reposition(gameBoard, xdim, ydim);
-
-    std::cout << "Xdim is " << xdim << "Ydim is " << ydim << std::endl;
+    reposition(gameBoard, xdim, ydim, 'Z', province_index, city_index);
 
     std::cout << std::endl;
     std::cout << std::endl;
@@ -110,6 +130,18 @@ int main() {
     std::cout << std::endl;
     std::cout << std::endl;
     std::cout << std::endl;
+
+    while (true) {
+        char players_action = getAction();
+
+        
+        reposition(gameBoard, xdim, ydim, players_action, province_index, city_index);
+        print_canada_with_player(gameBoard, xdim, ydim);
+        std::string province = WhereAmI_province(gameBoard, xdim, ydim);
+        std::cout << "You are currently in " << province << ". What would you like do do now?" << std::endl << std::endl;
+        
+
+    }
 
     // std::cout << "Choose a province to mark: ";
     // std::cin >> province_index;
@@ -144,10 +176,12 @@ int main() {
 
 
 
-    //next tasks
-    //identify the province (*difficult part*)
+    //next tasks:
     //give options to move or search
     //if search, you need to answer questions to get carrots
+    //if you do not guess the correct city, the reindeer will move, the marks will disapear 
+    //call clearboard, then createboard, and the game will continue
+    //if the inspect is unsuccessful, call mark function
 
 
     return 0;
@@ -187,6 +221,7 @@ char * createBoard() {
     canada_graphic can;
     char *board{new char[1071]{}};
     
+    //Ocean
     for (std::size_t i{}; i < 1071; i++) {
         if (can.characters[i] == '~') {
             board[i] = 0;
@@ -777,51 +812,122 @@ void print_canada_start() {
         }
 
         
-    //     if (can.characters[i] == '#') {
-    //         std::cout << colors.green << can.characters[i]; 
-    //     } else {
-    //         std::cout << colors.blue << can.characters[i];
-    //     }
-
-        if (i == 561) {
-            std::cout << colors.yellow << '*';
-        } else if (can.characters[i] == '#') {
+        if (can.characters[i] == '#') {
             std::cout << colors.green << can.characters[i]; 
         } else {
             std::cout << colors.blue << can.characters[i];
-        } 
+        }
+
     }
 
 }
 
-void reposition(char * board, std::size_t &xdim, std::size_t &ydim) {
+void reposition(char * board, std::size_t &xdim, std::size_t &ydim, char action, int province_num, int city_num) {
+
+
+    if (action == 'Z') {
+        //Player picks their initial position
+
+        std::cout << "Enter X-coordinate (0-50): ";
     
-    std::cout << "Enter X-coordinate (0-50): ";
-    
-    bool valid_x {false};
-    while (valid_x == false) {
-        std::cin >> xdim; 
-        if ((xdim >=0) && (xdim <= 50)){
-            valid_x = true;
-        } else {
-           std::cout << "Please enter a value between 0 and 50: ";
+        bool valid_x {false};
+        while (valid_x == false) {
+            std::cin >> xdim; 
+            if ((xdim >=0) && (xdim <= 50)){
+                valid_x = true;
+            } else {
+            std::cout << "Please enter a value between 0 and 50: ";
+            }
         }
-    }
 
+        std::cout << "Enter Y-coordinate (0-20): ";
+        bool valid_y {false};
+        while (valid_y == false) {
+            std::cin >> ydim; 
+            if ((ydim >=0) && (ydim <= 50)){
+                valid_y = true;
+            } else {
+            std::cout << "Please enter a value between 0 and 20: ";
+            }
+        }  
+    } else {
+        //Player moves to a different position
+        
     
-    
-    std::cout << "Enter Y-coordinate (0-20): ";
-    bool valid_y {false};
-    while (valid_y == false) {
-        std::cin >> ydim; 
-        if ((ydim >=0) && (ydim <= 50)){
-            valid_y = true;
-        } else {
-           std::cout << "Please enter a value between 0 and 20: ";
+        if ((action == 'I') || (action == 'i'))  // Inspect
+        {
+            if (board[xdim + ydim*51] == 0) {
+                std::cout << "You are in the ocean. Reindeers are not sea creatures, dummy. Move to a province to inspect." << std::endl;
+                char new_action = getAction_noInspect();
+                reposition(board, xdim, ydim, new_action, province_num, city_num);
+            } else if (board[xdim + ydim*51] == 14) {
+                std::cout << "You have already checked this province. Move to another one to inspect." << std::endl;
+                char new_action = getAction_noInspect();
+                reposition(board, xdim, ydim, new_action, province_num, city_num);
+            } else {
+                actionInspect(board, xdim, ydim, province_num, city_num);
+            }
+            
         }
+        else if ((action == 'N') || (action == 'n'))  // go north
+        {
+            if (ydim != 0) {
+                ydim -= 1;  
+            } else {
+                char planB {'0'};
+                while ((planB == 'N') || (planB == 'n') || (planB == '0')) {
+                    std::cout << "You cannot explore beyond the map. Pick a different action (I, E, S, or W): ";
+                    std::cin >> planB;
+                }
+                std::cout << "plan B is " << planB << std::endl;
+                reposition(board, xdim, ydim, planB, province_num, city_num);
+            }
+           
+        }
+        else if ((action == 'E') || (action == 'e')) // go east
+        {
+            if (xdim != 50) {
+                xdim += 1;  
+            } else {
+                char planB {'0'};
+                while ((planB == 'E') || (planB == 'e') || (planB == '0')) {
+                    std::cout << "You cannot explore beyond the map. Pick a different action (I, N, S, or W): ";
+                    std::cin >> planB;
+                }
+                reposition(board, xdim, ydim, planB, province_num, city_num);
+            }
+        }
+        else if ((action == 'S') || (action == 's')) // go south
+        {
+            if (ydim != 20) {
+                ydim += 1;  
+            } else {
+                char planB {'0'};
+                while ((planB == 'S') || (planB == 's') || (planB == '0')) {
+                    std::cout << "You cannot explore beyond the map. Pick a different action (I, N, E, or W): ";
+                    std::cin >> planB;
+                }
+                reposition(board, xdim, ydim, planB, province_num, city_num);
+                
+            }
+        }
+        else if ((action == 'W') || (action == 'w'))  // go west
+        {
+            if (xdim != 0) {
+                xdim -= 1;  
+            } else {
+                char planB {'0'};
+                while ((planB == 'W') || (planB == 'w') || (planB == '0')) {
+                    std::cout << "You cannot explore beyond the map. Pick a different action (I, N, E, or S): ";
+                    std::cin >> planB;
+                }
+                reposition(board, xdim, ydim, planB, province_num, city_num);
+            }
+            
+        }
+    
+
     }
-
-
 }
 
 void print_canada_with_player(char * board, std::size_t &xdim, std::size_t &ydim) {
@@ -854,6 +960,43 @@ void print_canada_with_player(char * board, std::size_t &xdim, std::size_t &ydim
     }
 }
 
+char getAction()
+{
+  char action {0};
+
+  std::cout << "Please enter the letter corresponding to the action you wish to complete: " << std::endl;
+  std::cout << "I - Inspect this province" << std::endl;
+  std::cout << "N - Move North" << std::endl;
+  std::cout << "E - Move East" << std::endl;
+  std::cout << "S - Move South" << std::endl;
+  std::cout << "W - Move West" << std::endl;
+  std::cin >> action;
+
+  if (islower(action)) {
+    action = toupper(action);  
+  }
+    
+  return action;
+}
+
+char getAction_noInspect() {
+    char action {0};
+
+  std::cout << "Please enter the letter corresponding to the action you wish to complete: " << std::endl;
+  std::cout << "N - Move North" << std::endl;
+  std::cout << "E - Move East" << std::endl;
+  std::cout << "S - Move South" << std::endl;
+  std::cout << "W - Move West" << std::endl;
+  std::cin >> action;
+
+  if (islower(action)) {
+    action = toupper(action);  
+  }
+    
+  return action;
+}
+
+
 void mark_province (char * board, int index, std::size_t &xdim, std::size_t &ydim) { //may need & before board
     
     for (std::size_t i{}; i < 1071; i++) {
@@ -864,22 +1007,93 @@ void mark_province (char * board, int index, std::size_t &xdim, std::size_t &ydi
     print_canada_with_player(board, xdim, ydim);
 }
 
-// std::size_t province_hiding_spot() {
+int province_hiding_spot() {
   
-//     canada_graphic can;
-//     std::size_t reindeer_location {};
-//     bool land {false};
+    std::size_t reindeer_province {0};
 
-//     srand (time(NULL));
-
-//     while (land == false) {
-        
-//         reindeer_location = rand() % (can.capacity);
-
-//         if (can.characters[reindeer_location] == '#') {
-//             land = true;
-//         }
-//     }
+    while (reindeer_province == 0) { 
+        reindeer_province = rand() % 13;  
+    }
     
-//     return reindeer_location;
-// }
+    return reindeer_province;
+}
+
+int city_hiding_spot() {
+  
+    std::size_t reindeer_city {0};
+
+    while (reindeer_city == 0) {
+        reindeer_city = rand() % 3;
+    }
+    
+    return reindeer_city;
+}
+
+void actionInspect (char * board, std::size_t &xdim, std::size_t &ydim, int province_num, int city_num) {
+    
+    char hint_choice {};
+
+    if (province_num != board[xdim + ydim*51]) {
+        hint_countdown -= 1;
+        std::cout << "Nope! Santa's reindeer is not in this province. " << std::endl;
+        
+        if (hint_countdown == 0) {
+            std::cout << "Would you like a hint? [Y]es or [N]o: ";
+            std::cin >> hint_choice;
+                if ((hint_choice == 'Y') || (hint_choice == 'y')) {
+                    HelpHint(province_num);
+                }
+        } else {
+            std::cout << "You must inspect " << hint_countdown << " more province(s) before a hint becomes available." << std::endl;
+        }
+    } else {
+        std::cout << "Yes! This is the province where the reindeer is hiding.";
+    }
+
+    
+}
+
+std::string WhereAmI_province(char * board, std::size_t &xdim, std::size_t &ydim) {
+    std::size_t location {xdim + ydim*51};
+    std::string province {};
+
+    if (board[location] == 1) {
+        province = "Yukon";
+    } else if (board[location] == 2) {
+        province = "Northwest Territories";
+    } else if (board[location] == 3) {
+        province = "Nunavut";
+    } else if (board[location] == 4) {
+        province = "British Columbia";
+    } else if (board[location] == 5) {
+        province = "Alberta";
+    } else if (board[location] == 6) {
+        province = "Saskatchewan";
+    } else if (board[location] == 7) {
+        province = "Manitoba";
+    } else if (board[location] == 8) {
+        province = "Ontario";
+    } else if (board[location] == 9) {
+        province = "Quebec";
+    } else if (board[location] == 10) {
+        province = "New Brunswick";
+    } else if (board[location] == 11) {
+        province = "Nova Scotia";
+    } else if (board[location] == 12) {
+        province = "Prince Edward Island";
+    } else if (board[location] == 13) {
+        province = "Newfoundland and Labrador";
+    } else if (board[location] == 4) {
+        province = "British Columbia";
+    } else if (board[location] == 14) {
+        province = "a province you have already inspected";
+    } else {
+       province = "the ocean"; 
+    }
+
+    return province;
+}
+
+void HelpHint(int province_num) {
+    //give hints for each province
+}
