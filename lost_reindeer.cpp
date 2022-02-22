@@ -2,6 +2,7 @@
 #include <string>
 #include <stdlib.h>
 #include <time.h> 
+#include <limits>
 
 int main();
 bool game();
@@ -19,6 +20,15 @@ void reposition (char * board, std::size_t &xdim, std::size_t &ydim, char action
 void actionInspect(char * board, std::size_t &xdim, std::size_t &ydim, int province_num, int city_num);
 std::string WhereAmI_province(char * board, std::size_t &xdim, std::size_t &ydim);
 void HelpHint(int province_num);
+void GetCarrots (int province_num);
+
+
+
+//global variables
+int hint_countdown {3};
+int carrots {0};
+bool inspect_lock {false};
+
 
 class Colors {
   public:
@@ -32,11 +42,6 @@ class Colors {
     const std::string cyan = "\033[36m";
     const std::string white = "\033[37m";
 };
-
-
-int hint_countdown {3};
-int carrots {0};
-
 
 class canada_graphic {
   public:
@@ -131,7 +136,7 @@ bool game() {
     std::cout << std::endl;
     std::cout << std::endl;
 
-    while (true) {
+    while (inspect_lock == false) {
         char players_action = getAction();
 
         
@@ -853,7 +858,6 @@ void reposition(char * board, std::size_t &xdim, std::size_t &ydim, char action,
     } else {
         //Player moves to a different position
         
-    
         if ((action == 'I') || (action == 'i'))  // Inspect
         {
             if (board[xdim + ydim*51] == 0) {
@@ -938,13 +942,13 @@ void print_canada_with_player(char * board, std::size_t &xdim, std::size_t &ydim
       
         for (std::size_t print_col {0}; print_col < 51; print_col++){
             
-            if (board[print_row*51 + print_col] == 14) {
-                //marked as no reindeer
-                std::cout << colors.yellow << "X";
-
-            } else if ((print_row == ydim) && (print_col == xdim)) {
+            if ((print_row == ydim) && (print_col == xdim)) {
                 //player's location
                 std::cout << colors.red << "O";
+
+            } else if (board[print_row*51 + print_col] == 14) {
+                //marked as no reindeer
+                std::cout << colors.yellow << "X";
             } else {
                 
                 if (can.characters[print_row*51 + print_col] == '#') {
@@ -996,7 +1000,6 @@ char getAction_noInspect() {
   return action;
 }
 
-
 void mark_province (char * board, int index, std::size_t &xdim, std::size_t &ydim) { //may need & before board
     
     for (std::size_t i{}; i < 1071; i++) {
@@ -1004,7 +1007,6 @@ void mark_province (char * board, int index, std::size_t &xdim, std::size_t &ydi
             board[i] = 14;
         }
     }
-    print_canada_with_player(board, xdim, ydim);
 }
 
 int province_hiding_spot() {
@@ -1034,20 +1036,51 @@ void actionInspect (char * board, std::size_t &xdim, std::size_t &ydim, int prov
     char hint_choice {};
 
     if (province_num != board[xdim + ydim*51]) {
-        hint_countdown -= 1;
+        if (hint_countdown != 0) {
+            hint_countdown -= 1;
+        }
         std::cout << "Nope! Santa's reindeer is not in this province. " << std::endl;
-        
+        mark_province(board, board[xdim + ydim*51], xdim, ydim);
         if (hint_countdown == 0) {
+            print_canada_with_player(board, xdim, ydim);
             std::cout << "Would you like a hint? [Y]es or [N]o: ";
             std::cin >> hint_choice;
                 if ((hint_choice == 'Y') || (hint_choice == 'y')) {
                     HelpHint(province_num);
+
                 }
         } else {
             std::cout << "You must inspect " << hint_countdown << " more province(s) before a hint becomes available." << std::endl;
         }
+        
     } else {
-        std::cout << "Yes! This is the province where the reindeer is hiding.";
+        inspect_lock = true;
+        
+        std::cout << "Yes! This is the province where the reindeer is hiding." << std::endl
+        << "There are three cities where the reindeer could be hiding." << std::endl
+        << "Why is he in a city rather than a forest?" << std::endl
+        << "Santa's reindeer know their way around the cities very well :)" << std::endl << std::endl
+        << "You will earn a carrot for each trivia question you answer correctly." << std::endl
+        << "Each carrot allows you to search one city." << std::endl;
+        
+
+        std::cin.ignore();
+        std::cout << "Press enter to continue";
+        std::cin.get();
+        
+        
+        
+        GetCarrots(province_num);
+
+        
+
+        std::cout << "You have " << carrots << " carrots, so you can search " 
+        << carrots << " cities. If you can't find the reindeer, he will run to a different province." 
+        << std::endl;
+
+        
+
+
     }
 
     
@@ -1095,5 +1128,255 @@ std::string WhereAmI_province(char * board, std::size_t &xdim, std::size_t &ydim
 }
 
 void HelpHint(int province_num) {
-    //give hints for each province
+    if (province_num == 1) {
+        std::cout << "Yukon hint" << std::endl;
+    } else if (province_num == 2) {
+        std::cout << "NWT hint" << std::endl;
+    } else if (province_num == 3) {
+        std::cout << "Nunavut hint" << std::endl;
+    } else if (province_num == 4) {
+        std::cout << "BC hint" << std::endl;
+    } else if (province_num == 5) {
+        std::cout << "Alberta hint" << std::endl;
+    } else if (province_num == 6) {
+        std::cout << "Saskatchewan hint" << std::endl;
+    } else if (province_num == 7) {
+        std::cout << "Manitoba hint" << std::endl;
+    } else if (province_num == 8) {
+        std::cout << "Ontario hint" << std::endl;
+    } else if (province_num == 9) {
+        std::cout << "Quebec hint" << std::endl;
+    } else if (province_num == 10) {
+        std::cout << "New Brunswick hint" << std::endl;
+    } else if (province_num == 11) {
+        std::cout << "Nova Scotia hint" << std::endl;
+    } else if (province_num == 12) {
+        std::cout << "PEI hint" << std::endl;
+    } else {
+        std::cout << "Newfoundland and Labrador hint" << std::endl;
+    }
+    
+    std::cin.ignore();
+    std::cout << "Press enter to continue";
+    std::cin.get();
 }
+
+void GetCarrots (int province_num) {
+
+    //create a linked list for trivia questions?
+    int num1 {0};
+    int num2 {0};
+    int num3 {0};
+
+    if (province_num == 1) {
+        std::cout << "How many provinces are in Canada?";
+        std::cin >> num1;
+        if(num1 == 13) {
+            carrots += 1;
+        }
+        std::cout << "How many territories are in Canada?";
+        std::cin >> num1;
+        if(num1 == 3) {
+            carrots += 1;
+        }
+        std::cout << "How many maple leafs are on the Canadian flag?";
+        std::cin >> num1;
+        if(num1 == 1) {
+            carrots += 1;
+        }
+
+    } else if (province_num == 2) {
+        std::cout << "How many provinces are in Canada?";
+        std::cin >> num1;
+        if(num1 == 13) {
+            carrots += 1;
+        }
+        std::cout << "How many territories are in Canada?";
+        std::cin >> num1;
+        if(num1 == 3) {
+            carrots += 1;
+        }
+        std::cout << "How many maple leafs are on the Canadian flag?";
+        std::cin >> num1;
+        if(num1 == 1) {
+            carrots += 1;
+        }
+    } else if (province_num == 3) {
+        std::cout << "How many provinces are in Canada?";
+        std::cin >> num1;
+        if(num1 == 13) {
+            carrots += 1;
+        }
+        std::cout << "How many territories are in Canada?";
+        std::cin >> num1;
+        if(num1 == 3) {
+            carrots += 1;
+        }
+        std::cout << "How many maple leafs are on the Canadian flag?";
+        std::cin >> num1;
+        if(num1 == 1) {
+            carrots += 1;
+        }
+    } else if (province_num == 4) {
+        std::cout << "How many provinces are in Canada?";
+        std::cin >> num1;
+        if(num1 == 13) {
+            carrots += 1;
+        }
+        std::cout << "How many territories are in Canada?";
+        std::cin >> num1;
+        if(num1 == 3) {
+            carrots += 1;
+        }
+        std::cout << "How many maple leafs are on the Canadian flag?";
+        std::cin >> num1;
+        if(num1 == 1) {
+            carrots += 1;
+        }
+    } else if (province_num == 5) {
+        std::cout << "How many provinces are in Canada?";
+        std::cin >> num1;
+        if(num1 == 13) {
+            carrots += 1;
+        }
+        std::cout << "How many territories are in Canada?";
+        std::cin >> num1;
+        if(num1 == 3) {
+            carrots += 1;
+        }
+        std::cout << "How many maple leafs are on the Canadian flag?";
+        std::cin >> num1;
+        if(num1 == 1) {
+            carrots += 1;
+        }
+    } else if (province_num == 6) {
+        std::cout << "How many provinces are in Canada?";
+        std::cin >> num1;
+        if(num1 == 13) {
+            carrots += 1;
+        }
+        std::cout << "How many territories are in Canada?";
+        std::cin >> num1;
+        if(num1 == 3) {
+            carrots += 1;
+        }
+        std::cout << "How many maple leafs are on the Canadian flag?";
+        std::cin >> num1;
+        if(num1 == 1) {
+            carrots += 1;
+        }
+    } else if (province_num == 7) {
+        std::cout << "How many provinces are in Canada?";
+        std::cin >> num1;
+        if(num1 == 13) {
+            carrots += 1;
+        }
+        std::cout << "How many territories are in Canada?";
+        std::cin >> num1;
+        if(num1 == 3) {
+            carrots += 1;
+        }
+        std::cout << "How many maple leafs are on the Canadian flag?";
+        std::cin >> num1;
+        if(num1 == 1) {
+            carrots += 1;
+        }
+    } else if (province_num == 8) {
+        std::cout << "How many provinces are in Canada?";
+        std::cin >> num1;
+        if(num1 == 13) {
+            carrots += 1;
+        }
+        std::cout << "How many territories are in Canada?";
+        std::cin >> num1;
+        if(num1 == 3) {
+            carrots += 1;
+        }
+        std::cout << "How many maple leafs are on the Canadian flag?";
+        std::cin >> num1;
+        if(num1 == 1) {
+            carrots += 1;
+        }
+    } else if (province_num == 9) {
+        std::cout << "How many provinces are in Canada?";
+        std::cin >> num1;
+        if(num1 == 13) {
+            carrots += 1;
+        }
+        std::cout << "How many territories are in Canada?";
+        std::cin >> num1;
+        if(num1 == 3) {
+            carrots += 1;
+        }
+        std::cout << "How many maple leafs are on the Canadian flag?";
+        std::cin >> num1;
+        if(num1 == 1) {
+            carrots += 1;
+        }
+    } else if (province_num == 10) {
+        std::cout << "How many provinces are in Canada?";
+        std::cin >> num1;
+        if(num1 == 13) {
+            carrots += 1;
+        }
+        std::cout << "How many territories are in Canada?";
+        std::cin >> num1;
+        if(num1 == 3) {
+            carrots += 1;
+        }
+        std::cout << "How many maple leafs are on the Canadian flag?";
+        std::cin >> num1;
+        if(num1 == 1) {
+            carrots += 1;
+        }
+    } else if (province_num == 11) {
+        std::cout << "How many provinces are in Canada?";
+        std::cin >> num1;
+        if(num1 == 13) {
+            carrots += 1;
+        }
+        std::cout << "How many territories are in Canada?";
+        std::cin >> num1;
+        if(num1 == 3) {
+            carrots += 1;
+        }
+        std::cout << "How many maple leafs are on the Canadian flag?";
+        std::cin >> num1;
+        if(num1 == 1) {
+            carrots += 1;
+        }
+    } else if (province_num == 12) {
+        std::cout << "How many provinces are in Canada?";
+        std::cin >> num1;
+        if(num1 == 13) {
+            carrots += 1;
+        }
+        std::cout << "How many territories are in Canada?";
+        std::cin >> num1;
+        if(num1 == 3) {
+            carrots += 1;
+        }
+        std::cout << "How many maple leafs are on the Canadian flag?";
+        std::cin >> num1;
+        if(num1 == 1) {
+            carrots += 1;
+        }
+    } else {
+        std::cout << "How many provinces are in Canada?";
+        std::cin >> num1;
+        if(num1 == 13) {
+            carrots += 1;
+        }
+        std::cout << "How many territories are in Canada?";
+        std::cin >> num1;
+        if(num1 == 3) {
+            carrots += 1;
+        }
+        std::cout << "How many maple leafs are on the Canadian flag?";
+        std::cin >> num1;
+        if(num1 == 1) {
+            carrots += 1;
+        }
+    }
+}
+
