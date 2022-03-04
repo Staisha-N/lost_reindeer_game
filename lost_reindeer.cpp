@@ -3,21 +3,24 @@
 #include <stdlib.h>
 #include <time.h> 
 #include <limits>
+#include <cassert>
+
+
 
 int main();
 bool game();
 void print_canada_start();
 void print_canada_with_player(char * board, std::size_t &xdim, std::size_t &ydim);
 int province_hiding_spot();
-int city_hiding_spot(); 
+std::string city_hiding_spot(int province); 
 char * createBoard();
 void startGame(char * & board);
 void cleanBoard(char * board);
 char getAction();
 char getAction_noInspect();
 void mark_province (char * board, int index, std::size_t &xdim, std::size_t &ydim); //maybe use & before board?
-void reposition (char * board, std::size_t &xdim, std::size_t &ydim, char action, int province_num, int city_num);
-void actionInspect(char * board, std::size_t &xdim, std::size_t &ydim, int province_num, int city_num);
+void reposition (char * board, std::size_t &xdim, std::size_t &ydim, char action, int province_num, std::string city_name);
+void actionInspect(char * board, std::size_t &xdim, std::size_t &ydim, int province_num, std::string city_name);
 std::string WhereAmI_province(char * board, std::size_t &xdim, std::size_t &ydim);
 void HelpHint(int province_num);
 void GetCarrots (int province_num);
@@ -29,6 +32,42 @@ int hint_countdown {3};
 int carrots {0};
 bool inspect_lock {false};
 bool game_won {false};
+
+class Node;
+class Linked_list;
+class Colors;
+class canada_graphic;
+
+class Node {
+  public:
+    Node(std::string const new_city,
+          Node  *const p_new_next_node );
+    
+
+    std::string city() const; // to write
+    Node *p_next_node() const;
+ 
+  private:
+    std::string city_;
+    Node  *p_next_node_;
+};
+
+class Linked_list {
+  public:
+    Linked_list();
+   ~Linked_list();
+    
+    std::string front() const;
+    bool empty() const;
+    
+    void push_front( std::string new_city );
+    void pop_front();
+    void clear();
+
+    Node *p_list_head_;
+    Node *p_list_tail_;
+    
+};
 
 class Colors {
   public:
@@ -71,6 +110,7 @@ class canada_graphic {
 
 int main() {
     srand(time(NULL));
+
     game();
     return 0;
 } 
@@ -84,10 +124,10 @@ bool game() {
     std::size_t xdim {};
     std::size_t ydim {};
     int province_index = province_hiding_spot(); // random province (1-13) 
-    int city_index = city_hiding_spot (); // random city (1-3)
+    std::string city_name = city_hiding_spot(province_index); // random city (1-3)
 
     std::cout << province_index << std::endl;
-    std::cout << city_index << std::endl;
+    std::cout << city_name << std::endl;
 
     startGame(gameBoard);
 
@@ -123,7 +163,7 @@ bool game() {
     std::cout << std::endl;
 
     std::cout << "Choose the coordinates of the location where you would like to begin your search." << std::endl;
-    reposition(gameBoard, xdim, ydim, 'Z', province_index, city_index);
+    reposition(gameBoard, xdim, ydim, 'Z', province_index, city_name);
 
     std::cout << std::endl;
     std::cout << std::endl;
@@ -133,8 +173,6 @@ bool game() {
 
     print_canada_with_player(gameBoard, xdim, ydim);
 
-    std::cout << inspect_lock;
-
     std::cout << std::endl;
     std::cout << std::endl;
     std::cout << std::endl;
@@ -143,7 +181,7 @@ bool game() {
         char players_action = getAction();
 
         
-        reposition(gameBoard, xdim, ydim, players_action, province_index, city_index);
+        reposition(gameBoard, xdim, ydim, players_action, province_index, city_name);
         if (game_won == true) {
             return false;
         }
@@ -154,21 +192,75 @@ bool game() {
 
     }
 
-    // std::cout << "Choose a province to mark: ";
-    // std::cin >> province_index;
-
-    // mark_province (gameBoard, province_index, xdim, ydim);
-
-    //next tasks:
-    //give options to move or search
-    //if search, you need to answer questions to get carrots
-    //if you do not guess the correct city, the reindeer will move, the marks will disapear 
-    //call clearboard, then createboard, and the game will continue
-    //if the inspect is unsuccessful, call mark function
-
-
     return false;
 }
+
+Node::Node(std::string const new_city,
+            Node  *const p_new_next_node ):
+city_{new_city},
+p_next_node_{ p_new_next_node } {}
+
+std::string Node::city() const {
+  return city_;
+} 
+
+Node *Node::p_next_node() const {
+  return p_next_node_;
+}
+
+Linked_list::Linked_list():
+p_list_head_{ nullptr },
+p_list_tail_{ nullptr } {
+  
+}
+
+Linked_list::~Linked_list() {
+  clear();
+}
+
+std::string Linked_list::front() const {
+  if ( !empty() ) {
+    return p_list_head_->city(); 
+  } else {
+    assert( empty() );
+    throw std::out_of_range{ "The linked list is empty" };
+  }
+}
+
+bool Linked_list::empty() const {
+  return ( p_list_head_ == nullptr );
+}
+
+void Linked_list::push_front( std::string new_city ) {
+    p_list_head_ = new Node{ new_city, p_list_head_ };
+
+    if ( p_list_tail_ == nullptr ) {
+      p_list_tail_ = p_list_head_;
+    }
+}
+
+void Linked_list::pop_front() {
+  if ( !empty() ) {
+    Node *p_old_head{ p_list_head_ };
+
+    p_list_head_ = p_list_head_->p_next_node();
+
+    if ( p_list_head_ == nullptr ) {
+        p_list_tail_ = nullptr;
+    }
+
+    delete p_old_head;
+    p_old_head = nullptr;
+  }
+}
+
+
+void Linked_list::clear() {
+  while ( !empty() ) {
+    pop_front();
+  }
+}
+
 
 void startGame(char * & board){
   cleanBoard(board);
@@ -805,7 +897,7 @@ void print_canada_start() {
 
 }
 
-void reposition(char * board, std::size_t &xdim, std::size_t &ydim, char action, int province_num, int city_num) {
+void reposition(char * board, std::size_t &xdim, std::size_t &ydim, char action, int province_num, std::string city_name) {
 
 
     if (action == 'Z') {
@@ -841,13 +933,13 @@ void reposition(char * board, std::size_t &xdim, std::size_t &ydim, char action,
             if (board[xdim + ydim*51] == 0) {
                 std::cout << "You are in the ocean. Reindeers are not sea creatures, dummy. Move to a province to inspect." << std::endl;
                 char new_action = getAction_noInspect();
-                reposition(board, xdim, ydim, new_action, province_num, city_num);
+                reposition(board, xdim, ydim, new_action, province_num, city_name);
             } else if (board[xdim + ydim*51] == 14) {
                 std::cout << "You have already checked this province. Move to another one to inspect." << std::endl;
                 char new_action = getAction_noInspect();
-                reposition(board, xdim, ydim, new_action, province_num, city_num);
+                reposition(board, xdim, ydim, new_action, province_num, city_name);
             } else {
-                actionInspect(board, xdim, ydim, province_num, city_num);
+                actionInspect(board, xdim, ydim, province_num, city_name);
             }
             
         }
@@ -862,7 +954,7 @@ void reposition(char * board, std::size_t &xdim, std::size_t &ydim, char action,
                     std::cin >> planB;
                 }
                 std::cout << "plan B is " << planB << std::endl;
-                reposition(board, xdim, ydim, planB, province_num, city_num);
+                reposition(board, xdim, ydim, planB, province_num, city_name);
             }
            
         }
@@ -876,7 +968,7 @@ void reposition(char * board, std::size_t &xdim, std::size_t &ydim, char action,
                     std::cout << "You cannot explore beyond the map. Pick a different action (I, N, S, or W): ";
                     std::cin >> planB;
                 }
-                reposition(board, xdim, ydim, planB, province_num, city_num);
+                reposition(board, xdim, ydim, planB, province_num, city_name);
             }
         }
         else if ((action == 'S') || (action == 's')) // go south
@@ -889,7 +981,7 @@ void reposition(char * board, std::size_t &xdim, std::size_t &ydim, char action,
                     std::cout << "You cannot explore beyond the map. Pick a different action (I, N, E, or W): ";
                     std::cin >> planB;
                 }
-                reposition(board, xdim, ydim, planB, province_num, city_num);
+                reposition(board, xdim, ydim, planB, province_num, city_name);
                 
             }
         }
@@ -903,7 +995,7 @@ void reposition(char * board, std::size_t &xdim, std::size_t &ydim, char action,
                     std::cout << "You cannot explore beyond the map. Pick a different action (I, N, E, or S): ";
                     std::cin >> planB;
                 }
-                reposition(board, xdim, ydim, planB, province_num, city_num);
+                reposition(board, xdim, ydim, planB, province_num, city_name);
             }
             
         }
@@ -992,26 +1084,205 @@ int province_hiding_spot() {
     std::size_t reindeer_province {0};
 
     while (reindeer_province == 0) { 
-        reindeer_province = rand() % 13;  
+        reindeer_province = rand() % 14;  
     }
     
     return reindeer_province;
 }
 
-int city_hiding_spot() {
+std::string city_hiding_spot(int province) {
   
-    std::size_t reindeer_city {0};
+    std::size_t i {0};
+    std::string r {};
 
-    while (reindeer_city == 0) {
-        reindeer_city = rand() % 3;
+    while (i == 0) {
+        i = rand() % 4;
     }
+
+    if (province == 1) {
+        
+        if ( i == 1) {
+            r = "Whitehorse";
+        } else if (i == 2) {
+            r = "Tagish";
+        } else {
+            r = "Teslin";
+        }
+
+    } else if (province == 2) {
+        if ( i == 1) {
+            r = "Wrigley";
+        } else if (i == 2) {
+            r = "Yellowknife";
+        } else {
+            r = "Whati";
+        }
+    } else if (province == 3) {
+        if ( i == 1) {
+            r = "Igloolik";
+        } else if (i == 2) {
+            r = "Iqaluit";
+        } else {
+            r = "Qikiqtarjuaq";
+        }
+    } else if (province == 4) {
+        if ( i == 1) {
+            r = "Vancouver";
+        } else if (i == 2) {
+            r = "Victoria";
+        } else {
+            r = "Kamloops";
+        }
+    } else if (province == 5) {
+        if ( i == 1) {
+            r = "Edmonton";
+        } else if (i == 2) {
+            r = "Calgary";
+        } else {
+            r = "Banff";
+        }
+    } else if (province == 6) {
+        if ( i == 1) {
+            r = "Saskatoon";
+        } else if (i == 2) {
+            r = "Regina";
+        } else {
+            r = "Moose Jaw";
+        }
+    } else if (province == 7) {
+        if ( i == 1) {
+            r = "Winnipeg";
+        } else if (i == 2) {
+            r = "Churchill";
+        } else {
+            r = "Dauphin";
+        }
+    } else if (province == 8) {
+        if ( i == 1) {
+            r = "Ottawa";
+        } else if (i == 2) {
+            r = "Toronto";
+        } else {
+            r = "Waterloo";
+        }
+    } else if (province == 9) {
+        if ( i == 1) {
+            r = "Montreal";
+        } else if (i == 2) {
+            r = "Quebec City";
+        } else {
+            r = "Saguenay";
+        }
+    } else if (province == 10) {
+        if ( i == 1) {
+            r = "Fredericton";
+        } else if (i == 2) {
+            r = "Rogersville";
+        } else {
+            r = "Moncton";
+        }
+    } else if (province == 11) {
+        if ( i == 1) {
+            r = "Halifax";
+        } else if (i == 2) {
+            r = "Digby";
+        } else {
+            r = "Lower Sackville";
+        }
+    } else if (province == 12) {
+        if ( i == 1) {
+            r = "Charlottetown";
+        } else if (i == 2) {
+            r = "Wellington";
+        } else {
+            r = "O'Leary";
+        }
+    } else if (province == 13) {
+        if ( i == 1) {
+            r = "St. John's";
+        } else if (i == 2) {
+            r = "Happy Valley-Goose Bay";
+        } else {
+            r = "Holyrood";
+        }
+    }
+
     
-    return reindeer_city;
+    return r;
 }
 
-void actionInspect (char * board, std::size_t &xdim, std::size_t &ydim, int province_num, int city_num) {
-    int city_guess {};
+//solve city problem
+void actionInspect (char * board, std::size_t &xdim, std::size_t &ydim, int province_num, std::string city_name) {
+    
+    std::string city_guess {};
     char hint_choice {};
+
+    Linked_list Yukon {};
+    Linked_list Northwest_Territories {};
+    Linked_list Nunavut {};
+    Linked_list BC {};
+    Linked_list Alberta {};
+    Linked_list Saskatchewan {};
+    Linked_list Manitoba {};
+    Linked_list Ontario {};
+    Linked_list Quebec {};
+    Linked_list NB {};
+    Linked_list NS {};
+    Linked_list PEI {};
+    Linked_list NandL {}; 
+
+    Yukon.push_front( "Whitehorse" );
+    Yukon.push_front( "Tagish" );
+    Yukon.push_front( "Teslin" ); 
+
+    Northwest_Territories.push_front( "Wrigley" );
+    Northwest_Territories.push_front( "Yellowknife" );
+    Northwest_Territories.push_front( "Whati" ); 
+
+    Nunavut.push_front( "Igloolik" );
+    Nunavut.push_front( "Iqaluit" );
+    Nunavut.push_front( "Qikiqtarjuaq" ); 
+
+    BC.push_front( "Vancouver" );
+    BC.push_front( "Victoria" );
+    BC.push_front( "Kamloops" );
+
+    Alberta.push_front( "Edmonton" );
+    Alberta.push_front( "Calgary" );
+    Alberta.push_front( "Banff" );
+
+    Saskatchewan.push_front( "Saskatoon" );
+    Saskatchewan.push_front( "Regina" );
+    Saskatchewan.push_front( "Moose Jaw" );
+
+    Manitoba.push_front( "Winnipeg" );
+    Manitoba.push_front( "Churchill" );
+    Manitoba.push_front( "Dauphin" );
+
+    Ontario.push_front( "Ottawa" );
+    Ontario.push_front( "Toronto" );
+    Ontario.push_front( "Waterloo" );
+
+    Quebec.push_front( "Montreal" );
+    Quebec.push_front( "Quebec City" );
+    Quebec.push_front( "Saguenay" );
+
+    NB.push_front( "Fredericton" );
+    NB.push_front( "Rogersville" );
+    NB.push_front( "Moncton" );
+
+    NS.push_front( "Halifax" );
+    NS.push_front( "Digby" );
+    NS.push_front( "Lower Sackville" );
+
+    PEI.push_front( "Charlottetown" );
+    PEI.push_front( "Wellington" );
+    PEI.push_front( "O'Leary" );
+
+    NandL.push_front( "St. John's" );
+    NandL.push_front( "Happy Valley-Goose Bay" );
+    NandL.push_front( "Holyrood" );
+
 
     if (province_num != board[xdim + ydim*51]) {
         if (hint_countdown != 0) {
@@ -1060,16 +1331,40 @@ void actionInspect (char * board, std::size_t &xdim, std::size_t &ydim, int prov
         << carrots << " cities. If you can't find the reindeer, he will run to a different province." 
         << std::endl;
 
+        //list city options
+            switch (province_num)
+        {
+            case 1 :  // Yukon
+            {
+                std::cout << "Where is the reindeer hiding in Yukon?" << std::endl;
+                for ( Node *p_node{ Yukon.p_list_head_ }; p_node != nullptr; p_node = p_node->p_next_node() ) {
+                std::cout << "-->" << p_node->city() << std::endl;
+                
+                }
+
+                break;
+            }
+            case 2 :  // N-W territories
+            {
+                std::cout << "Options for city 2";
+                break;
+            }
+            case 3 :  // Nunavut
+            {
+                std::cout << "Options for city 3";
+                break;
+            }
+        }
+
         while (carrots != 0) {
-            std::cout << "Guess what city the reindeer is in. The options for this province are [1], [2], or [3]." << std::endl
-            //<< three functions from the linked list 
             
-            << "Enter your guess: ";
-            //the user enters 1, 2 or 3
+            
+            std::cout << "Enter the city you want to search:  ";
+            //the user enters the name of the city
 
             std::cin >> city_guess;
 
-            if (city_guess == city_num) {
+            if (city_guess == city_name) {
                 game_won = true;
                 std::cout << "CORRECT! You have found the reindeer. You are guarenteed a spot on Santa's nice list for the rest of your life.";
                 break;
@@ -1081,8 +1376,9 @@ void actionInspect (char * board, std::size_t &xdim, std::size_t &ydim, int prov
         }
 
         if (game_won == false) {
-            // the city where the reindeer was hiding was: _______________
+            
             std::cout << "You have run out of guesses." << std::endl
+            << "The city where the reindeer was hiding was " << city_name
             << "The reindeer has run to a different province. You need to restart the search." << std::endl;
             
             std::cin.ignore();
@@ -1095,7 +1391,20 @@ void actionInspect (char * board, std::size_t &xdim, std::size_t &ydim, int prov
 
             cleanBoard (board);
             game ();
-            
+            Yukon.clear();
+            Northwest_Territories.clear();
+            Nunavut.clear ();
+            BC.clear();
+            Alberta.clear();
+            Saskatchewan.clear();
+            Manitoba.clear();
+            Ontario.clear();
+            Quebec.clear();
+            NB.clear();
+            NS.clear();
+            PEI.clear();
+            NandL.clear();
+
         }
     } 
 }
