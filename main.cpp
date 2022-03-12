@@ -357,6 +357,7 @@ void actionInspect (char * board, std::size_t &xdim, std::size_t &ydim, int prov
     Linked_list PEI {};
     Linked_list NandL {}; 
 
+    //create a void function that pushes these cities to the front
     Yukon.push_front( "Whitehorse" );
     Yukon.push_front( "Tagish" );
     Yukon.push_front( "Teslin" ); 
@@ -461,6 +462,12 @@ void actionInspect (char * board, std::size_t &xdim, std::size_t &ydim, int prov
         std::cout << "You have " << carrots << " carrots, so you can search " 
         << carrots << " cities. If you can't find the reindeer, he'll escape to a different location." 
         << std::endl << std::endl;
+
+        std::cin.ignore();
+        std::cout << "Press Enter to continue.";
+        std::cin.get();
+        
+        std::cout << std::endl;
 
         //list city options
             switch (province_num)
@@ -595,7 +602,7 @@ void actionInspect (char * board, std::size_t &xdim, std::size_t &ydim, int prov
             
             std::cout << std::endl << "You have run out of guesses." << std::endl
             << "The city where the reindeer was hiding was " << city_name << ". " << std::endl
-            << "The reindeer has run to a different province." << std::endl;
+            << "The reindeer has now run to a different province." << std::endl;
             
             std::cin.ignore();
             std::cout << "Press Enter to restart the search.";
