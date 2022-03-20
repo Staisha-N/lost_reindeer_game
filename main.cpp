@@ -51,8 +51,8 @@ bool game() {
     int province_index = province_hiding_spot(); // random province (1-13) 
     std::string city_name = city_hiding_spot(province_index); // random city (1-3)
 
-    std::cout << province_index << std::endl;
-    std::cout << city_name << std::endl;
+    // std::cout << province_index << std::endl;
+    // std::cout << city_name << std::endl;
 
     startGame(gameBoard);
 
