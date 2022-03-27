@@ -430,7 +430,7 @@ void actionInspect (char * board, std::size_t &xdim, std::size_t &ydim, int prov
             std::cout << "You must inspect " << hint_countdown << " more province(s) before a hint becomes available." << std::endl;
         }
         std::cin.ignore();
-        std::cout << "Press Enter if you would like to continue.";
+        std::cout << "Press Enter to continue.";
         std::cin.get();
         
     } else {
@@ -439,7 +439,7 @@ void actionInspect (char * board, std::size_t &xdim, std::size_t &ydim, int prov
         std::cout << "Yes! This is the province where the reindeer is hiding." << std::endl
         << "There are three cities where the reindeer could be hiding." << std::endl
         << "Why is he in a city rather than a forest?" << std::endl
-        << "Santa's reindeer know their way around the cities very well :)" << std::endl;
+        << "Santa's reindeer know their way around the cities very well ;)" << std::endl;
 
         std::cin.ignore();
         std::cout << "Press Enter to continue";
